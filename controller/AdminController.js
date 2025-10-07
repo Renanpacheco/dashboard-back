@@ -1,3 +1,4 @@
+const createUserToken = require("../helpers/create-user-token");
 const Admin = require("../models/Admin");
 const bcrypt = require("bcrypt");
 
@@ -20,9 +21,31 @@ module.exports = class AdminController {
     });
     try {
       const newAdmin = await admin.save();
-      res.status(201).json(newAdmin);
+      await createUserToken(newAdmin, req, res);
     } catch (error) {
       res.status(500).json(error);
     }
+  }
+
+  static async login(req, res) {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      res.status(422).json({ message: "email or password is missing" });
+      return;
+    }
+
+    const admin = await Admin.findOne({ email: email });
+
+    if (!admin) {
+      res.status(422).json("admin not found");
+    }
+
+    const checkPassword = await bcrypt.compare(password, admin.password);
+    if (!checkPassword) {
+      res.status(422).json({ message: "email or password is invalid" });
+      return;
+    }
+    await createUserToken(admin, req, res);
   }
 };
