@@ -1,6 +1,8 @@
-const createUserToken = require("../helpers/create-user-token");
 const Admin = require("../models/Admin");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const createUserToken = require("../helpers/create-user-token");
+const getToken = require("../helpers/get-token");
 
 module.exports = class AdminController {
   static async register(req, res) {
@@ -47,5 +49,20 @@ module.exports = class AdminController {
       return;
     }
     await createUserToken(admin, req, res);
+  }
+
+  static async checkAdmin(req, res) {
+    let currentAdmin = req.headers.authorization;
+
+    if (currentAdmin) {
+      const token = getToken(req);
+      const decoded = jwt.verify(token, "secret");
+
+      currentAdmin = await Admin.findById(decoded.id);
+      currentAdmin.password = undefined;
+    } else {
+      currentAdmin = null;
+    }
+    res.status(200).send(currentAdmin);
   }
 };
