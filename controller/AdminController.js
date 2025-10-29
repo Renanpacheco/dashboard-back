@@ -3,6 +3,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const createUserToken = require("../helpers/create-user-token");
 const getToken = require("../helpers/get-token");
+const getAdmin = require("../helpers/get-admin");
 
 module.exports = class AdminController {
   static async register(req, res) {
@@ -64,5 +65,51 @@ module.exports = class AdminController {
       currentAdmin = null;
     }
     res.status(200).send(currentAdmin);
+  }
+
+  static async getAdmin(req, res) {
+    const admin = await Admin.findById(req.params.id).select("-password");
+    if (!admin) {
+      res.status(422).json({ message: "admin not found" });
+      return;
+    }
+    res.status(200).json({ admin });
+  }
+
+  static async editAdmin(req, res) {
+    const id = req.params.id;
+    const token = getToken(req);
+    const admin = await getAdmin(token);
+    const { name, email, password } = req.body;
+
+    if (!admin) {
+      res.status(422).json({ message: "admin not found" });
+      return;
+    }
+    if (name) {
+      admin.name = name;
+    }
+    if (email) {
+      const emailExists = await Admin.findOne({ email: email });
+      if (admin.email !== email && emailExists) {
+        res.status(422).json({ message: "try other email" });
+        return;
+      } else {
+        admin.email = email;
+      }
+    }
+
+    if (password) {
+      const salt = await bcrypt.genSalt(12);
+      const passwordHash = await bcrypt.hash(password, salt);
+      admin.password = passwordHash;
+    }
+
+    try {
+      await Admin.findOneAndUpdate({ _id: id }, { $set: admin }, { new: true });
+      res.status(201).json({ message: "updated" });
+    } catch (error) {
+      res.status(500).json({ message: error });
+    }
   }
 };
