@@ -30,4 +30,9 @@ module.exports = class PetController {
       res.status(500).json(error);
     }
   }
+
+  static async getAllTeachers(req, res) {
+    const teachers = await Teacher.find().sort("-createdAt");
+    res.status(200).json({ teachers: teachers });
+  }
 };
